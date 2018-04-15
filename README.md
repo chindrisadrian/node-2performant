@@ -8,6 +8,7 @@ Using npm:
 
 ```bash
 $ npm install node-2performant
+```
 
 ## License
 
