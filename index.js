@@ -31,18 +31,28 @@ var TwoPerformant = function(auth){
 };
 
 TwoPerformant.prototype.makeRequest = async function(method,endpoint,data){
-  return axios({method: method, url: API_URL+'/'+endpoint, data: data || {}, headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'access-token': this.auth.accessToken,
-    'client': this.auth.client,
-    'uid': this.auth.uid,
-    'token-type': this.auth.tokenType
-  }})
-  .catch(function(error){
-    console.log(error.response.data.errors);
+  var _this = this;
+  return new Promise(function(resolve, reject){
+    return axios({method: method, url: API_URL+'/'+endpoint, data: data || {}, headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'access-token': _this.auth.accessToken,
+      'client': _this.auth.client,
+      'uid': _this.auth.uid,
+      'token-type': _this.auth.tokenType
+    }})
+    .then(function(res){
+      resolve(res);
+    })
+    .catch(function(error){
+      resolve({success: false,status: error.response.status,statusText: error.response.statusText,errors: error.response.data.errors});
+    });
   });
 };
+
+TwoPerformant.prototype.isSuccess = function(res, fetch) {
+    return res.success !== undefined && res.success === false ? false : true;
+}
 
 TwoPerformant.prototype.accessProperty = function(path, obj) {
     return path.split('.').reduce(function(prev, curr) {
@@ -52,6 +62,9 @@ TwoPerformant.prototype.accessProperty = function(path, obj) {
 
 TwoPerformant.prototype.getItems = async function(endpoint, params, fetch){
   var res = await this.makeRequest('GET',endpoint, params);
+  if(!fetch){
+    return res.data;
+  }
   var obj = {};
   var map = {
     'metadata.pagination': 'pagination',
@@ -70,7 +83,8 @@ TwoPerformant.prototype.getAllItems = async function(resource, cb){
   while(fetch){
     var res = await cb(page);
     Array.prototype.push.apply(arr,res[resource]);
-    if(page === parseInt(res.pagination.pages)){
+    var p = (res.pagination === undefined ? res.metadata.pagination.pages : res.pagination.pages)
+    if(page === parseInt(p)){
       fetch = false;
     }
     else{
@@ -151,8 +165,50 @@ TwoPerformant.prototype.advertiser = function(){
   var _this = this;
   var _obj = {};
 
-  _obj.getPrograms = function(params){};
-  _obj.getProgram = function(id,params){};
+  _obj.getPrograms = function(params){
+    return _this.getItems('advertiser/programs', params, ['programs','metadata.pagination']);
+  };
+
+  _obj.getAllPrograms = function(params){
+    return _this.getAllItems('programs', function(page){
+      return _obj.getPrograms(Object.assign(params || {},{page: page, perpage: 500}));
+    });
+  };
+
+  _obj.getProgram = async function(id){
+    var res = await _this.getItems('advertiser/programs/'+id, {}, ['program']);
+    return res.program;
+  };
+
+  _obj.getCommissions = function(params){
+    return _this.getItems('advertiser/programs/default/commissions', params);
+  };
+
+  _obj.getAllCommissions = function(params){
+    return _this.getAllItems('commissions', function(page){
+      return _obj.getCommissions(Object.assign(params || {},{page: page, perpage: 500}));
+    });
+  };
+
+  _obj.createCommission = async function(params){
+    var res = await _this.makeRequest('POST','advertiser/programs/default/commissions', {commission: params});
+    return _this.isSuccess(res) ? res.data.commission : res;
+  };
+
+  _obj.updateCommission = async function(id,params){
+    var res = await _this.makeRequest('PUT','advertiser/programs/default/commissions/'+id, {commission: params});
+    return _this.isSuccess(res) ? res.data.commission : res;
+  };
+
+  _obj.acceptCommission = async function(id){
+    var res = await _this.makeRequest('PUT','advertiser/programs/default/commissions/'+id+'/accept');
+    return _this.isSuccess(res) ? res.data.commission : res;
+  };
+
+  _obj.rejectCommission = async function(id, reason, params){
+    var res = await _this.makeRequest('PUT','advertiser/programs/default/commissions/'+id+'/reject', {reason: reason,commission: params});
+    return _this.isSuccess(res) ? res.data.commission : res;
+  };
 
   return _obj;
 };
