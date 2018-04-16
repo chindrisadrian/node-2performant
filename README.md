@@ -14,6 +14,8 @@ $ npm install node-2performant
 
 ```js
 //Making user auth
+var TwoPerformant = require('node-2performant');
+
 new TwoPerformant.Login('USERNAME','PASSWORD').then(function(user){
 
   //will return auth data and user data
@@ -35,6 +37,24 @@ new TwoPerformant.Login('USERNAME','PASSWORD').then(function(user){
 });
 ```
 
+## async/await example
+```js
+var TwoPerformant = require('node-2performant');
+
+async function run(){
+  var user =  await new TwoPerformant.Login('USERNAME','PASSWORD');
+
+  var tp = new TwoPerformant(user.auth);
+
+  var affiliate = tp.affiliate();
+
+  var affiliatePrograms = await affiliate.getPrograms();
+
+  var affiliateProgram = await affiliate.getProgram('ID');
+}
+run();
+```
+
 ## Affiliate methods
 
 ```js
@@ -45,8 +65,48 @@ var affiliate = tp.affiliate();
 Input parameters are well documented in [2performant API](https://doc.2performant.com)
 
 ##### affiliate.getPrograms(params)
+```js
+//all parameters are optional
+var params = {
+  page: 1, //Page number, default: 1
+  perpage: 10, //Resources per page, default: 10
+
+  //Filter object that contains optional fields for filtering resource results
+  filter: {
+    query: "", //Filter by on of fields [name, description, tos] can be full text searched using
+    category: "", //Filter by Category name
+    country: "", //Filter by Country name
+  },
+
+  //Sort object that contains any optional fields for sorting
+  sort: {
+    approved_commission_count: "", //Sort results asc or desc by price
+    click_count: "", //Sort results asc or desc by actions
+    epc: "", //Sort results asc or desc by clicks
+  }
+};
+
+affiliate.getPrograms(params).then(function(affiliatePrograms){
+  console.log(affiliatePrograms);
+});
+```
+
 ##### affiliate.getAllPrograms(params)
+```js
+//for parameters see getPrograms method
+affiliate.getAllPrograms(params).then(function(affiliatePrograms){
+  console.log(affiliatePrograms);
+});
+```
+
 ##### affiliate.getProgram(id)
+```js
+//id is required
+affiliate.getProgram(id).then(function(affiliateProgram){
+  console.log(affiliateProgram);
+});
+```
+
 ##### affiliate.getCommissions(params)
 ##### affiliate.getAllCommissions(params)
 ##### affiliate.getFeeds(params)
